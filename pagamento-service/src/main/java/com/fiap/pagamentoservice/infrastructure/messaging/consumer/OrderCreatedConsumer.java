@@ -15,7 +15,7 @@ public class OrderCreatedConsumer {
         this.processPaymentUseCase = processPaymentUseCase;
     }
 
-    @KafkaListener(topics = "${kafka.topic.pedido-criado}", groupId = "pagamento-service")
+    @KafkaListener(topics = "${kafka.topic.pedido-criado}", groupId = "${spring.kafka.consumer.group-id}")
     public void handle(OrderCreatedEvent event) {
         processPaymentUseCase.execute(
                 new OrderCreatedEventInput(

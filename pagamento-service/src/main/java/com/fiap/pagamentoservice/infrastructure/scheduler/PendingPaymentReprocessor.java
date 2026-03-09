@@ -15,6 +15,6 @@ public class PendingPaymentReprocessor {
 
     @Scheduled(fixedDelay = 10000)
     public void reprocess() {
-        reprocessPendingPaymentsUseCase.execute();
+//        reprocessPendingPaymentsUseCase.execute();
     }
 }
