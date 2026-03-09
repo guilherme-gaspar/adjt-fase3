@@ -1,0 +1,4 @@
+CREATE
+DATABASE pedidodb;
+CREATE
+DATABASE pagamentodb;
