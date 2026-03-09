@@ -1,5 +1,7 @@
 package com.fiap.pedidoservice.infrastructure.config;
 
+import com.fiap.pedidoservice.infrastructure.messaging.dto.PaymentApprovedEvent;
+import com.fiap.pedidoservice.infrastructure.messaging.dto.PaymentPendingEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,6 +11,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 
 import java.util.HashMap;
@@ -19,30 +22,63 @@ import java.util.Map;
 public class KafkaConsumerConfig {
 
     @Bean
-    public ConsumerFactory<String, Object> consumerFactory(
+    public ConsumerFactory<String, PaymentApprovedEvent> paymentApprovedConsumerFactory(
             @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${spring.kafka.consumer.group-id}") String groupId
     ) {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+        Map<String, Object> props = baseConsumerProps(bootstrapServers, groupId);
+        props.put(JacksonJsonDeserializer.VALUE_DEFAULT_TYPE, PaymentApprovedEvent.class.getName());
 
-        JacksonJsonDeserializer<Object> deserializer = new JacksonJsonDeserializer<>();
-        deserializer.addTrustedPackages("*");
+        return new DefaultKafkaConsumerFactory<>(props);
+    }
 
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+    @Bean(name = "paymentApprovedKafkaListenerContainerFactory")
+    public ConcurrentKafkaListenerContainerFactory<String, PaymentApprovedEvent> paymentApprovedKafkaListenerContainerFactory(
+            ConsumerFactory<String, PaymentApprovedEvent> paymentApprovedConsumerFactory
+    ) {
+        ConcurrentKafkaListenerContainerFactory<String, PaymentApprovedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(paymentApprovedConsumerFactory);
+        return factory;
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
-            ConsumerFactory<String, Object> consumerFactory
+    public ConsumerFactory<String, PaymentPendingEvent> paymentPendingConsumerFactory(
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
+            @Value("${spring.kafka.consumer.group-id}") String groupId
     ) {
-        ConcurrentKafkaListenerContainerFactory<String, Object> factory =
+        Map<String, Object> props = baseConsumerProps(bootstrapServers, groupId);
+        props.put(JacksonJsonDeserializer.VALUE_DEFAULT_TYPE, PaymentPendingEvent.class.getName());
+
+        return new DefaultKafkaConsumerFactory<>(props);
+    }
+
+    @Bean(name = "paymentPendingKafkaListenerContainerFactory")
+    public ConcurrentKafkaListenerContainerFactory<String, PaymentPendingEvent> paymentPendingKafkaListenerContainerFactory(
+            ConsumerFactory<String, PaymentPendingEvent> paymentPendingConsumerFactory
+    ) {
+        ConcurrentKafkaListenerContainerFactory<String, PaymentPendingEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory);
+        factory.setConsumerFactory(paymentPendingConsumerFactory);
         return factory;
+    }
+
+    private Map<String, Object> baseConsumerProps(String bootstrapServers, String groupId) {
+        Map<String, Object> props = new HashMap<>();
+
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+
+        props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JacksonJsonDeserializer.class);
+
+        props.put(JacksonJsonDeserializer.USE_TYPE_INFO_HEADERS, false);
+        props.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, "*");
+
+        return props;
     }
 }

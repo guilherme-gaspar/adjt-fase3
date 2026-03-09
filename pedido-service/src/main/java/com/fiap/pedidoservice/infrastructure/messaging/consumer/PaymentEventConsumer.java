@@ -19,12 +19,20 @@ public class PaymentEventConsumer {
         this.markOrderAsPendingPaymentUseCase = markOrderAsPendingPaymentUseCase;
     }
 
-    @KafkaListener(topics = "${kafka.topic.pagamento-aprovado}", groupId = "pedido-service")
+    @KafkaListener(
+            topics = "${kafka.topic.pagamento-aprovado}",
+            groupId = "${spring.kafka.consumer.group-id}",
+            containerFactory = "paymentApprovedKafkaListenerContainerFactory"
+    )
     public void handlePaymentApproved(PaymentApprovedEvent event) {
         markOrderAsPaidUseCase.execute(event.orderId());
     }
 
-    @KafkaListener(topics = "${kafka.topic.pagamento-pendente}", groupId = "pedido-service")
+    @KafkaListener(
+            topics = "${kafka.topic.pagamento-pendente}",
+            groupId = "${spring.kafka.consumer.group-id}",
+            containerFactory = "paymentPendingKafkaListenerContainerFactory"
+    )
     public void handlePaymentPending(PaymentPendingEvent event) {
         markOrderAsPendingPaymentUseCase.execute(event.orderId());
     }
