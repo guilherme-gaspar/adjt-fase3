@@ -2,6 +2,7 @@ package com.fiap.pagamentoservice.infrastructure.external;
 
 import com.fiap.pagamentoservice.application.dto.ExternalPaymentRequest;
 import com.fiap.pagamentoservice.application.gateway.ExternalPaymentGateway;
+import com.fiap.pagamentoservice.infrastructure.external.dto.ProcpagRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -26,8 +27,8 @@ public class ProcpagClient implements ExternalPaymentGateway {
     public void process(ExternalPaymentRequest request) {
         webClient.post()
                 .uri(baseUrl + "/requisicao")
-                .bodyValue(new com.fiap.pagamentoservice.infrastructure.external.dto.ProcpagRequest(
-                        request.amount(),
+                .bodyValue(new ProcpagRequest(
+                        request.amount().intValue(),
                         request.paymentId(),
                         request.customerId()
                 ))
