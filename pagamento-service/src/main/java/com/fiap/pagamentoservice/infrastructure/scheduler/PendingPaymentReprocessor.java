@@ -13,7 +13,7 @@ public class PendingPaymentReprocessor {
         this.reprocessPendingPaymentsUseCase = reprocessPendingPaymentsUseCase;
     }
 
-    @Scheduled(fixedDelay = 10000)
+    @Scheduled(fixedDelay = 100000)
     public void reprocess() {
 //        reprocessPendingPaymentsUseCase.execute();
     }
