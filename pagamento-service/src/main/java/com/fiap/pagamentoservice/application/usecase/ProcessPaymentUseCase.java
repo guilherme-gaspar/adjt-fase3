@@ -53,7 +53,7 @@ public class ProcessPaymentUseCase {
             paymentEventPublisherGateway.publishPaymentApproved(savedPayment.getOrderId());
 
         } catch (Exception ex) {
-            logger.info("Process payment with error: {}", paymentId);
+            logger.info("Process payment with error: {} - Exception - {}", paymentId, ex.getMessage());
             savedPayment.markPending();
             paymentRepositoryGateway.save(savedPayment);
             paymentEventPublisherGateway.publishPaymentPending(savedPayment.getOrderId());

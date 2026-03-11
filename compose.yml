@@ -71,6 +71,14 @@ services:
     networks:
       - fase3net
 
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - fase3net
+
   pedido-service:
     build:
       context: ./pedido-service
