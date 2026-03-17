@@ -4,6 +4,7 @@ import com.fiap.pagamentoservice.application.dto.ExternalPaymentRequest;
 import com.fiap.pagamentoservice.application.gateway.ExternalPaymentGateway;
 import com.fiap.pagamentoservice.infrastructure.external.dto.ProcpagRequest;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,10 +29,9 @@ public class ProcpagClient implements ExternalPaymentGateway {
                 .build();
     }
 
-
-    //    @Retry(name = "procpag", fallbackMethod = "fallback")
     @Override
     @CircuitBreaker(name = "procpag", fallbackMethod = "fallback")
+    @Retry(name = "procpag", fallbackMethod = "fallback")
     public void process(ExternalPaymentRequest request) {
         webClient.post()
                 .uri("/requisicao")
