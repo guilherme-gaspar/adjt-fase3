@@ -166,77 +166,42 @@ Observações técnicas
 Arquitetura detalhada
 ---------------------
 
-Diagrama de sequência — fluxo de criação de pedido e pagamento
--------------------------------------------------------------
-1) Cliente (UI) -> auth-service: login/obter JWT
-2) Cliente -> pedido-service: POST /orders (Authorization: Bearer <JWT>)
-3) pedido-service: valida token -> persiste pedido (status=PENDING) -> publica evento `pedido.criado` em Kafka
-4) pagamento-service (consumer) <- Kafka: consome `pedido.criado`, tenta processar pagamento via `procpag` (HTTP)
-5) procpag -> pagamento-service: responde (APROVADO / PENDENTE / REJEITADO)
-6) pagamento-service publica `pagamento.aprovado` ou `pagamento.pendente` em Kafka
-7) pedido-service consome resposta e atualiza status do pedido (CONFIRMED / PAYMENT_PENDING / REJECTED)
-8) Cliente consulta GET /orders/{id} para verificar status atualizado
+## Diagrama de sequência
+![Diagrama de Sequência](docs/sequencia.png)
+
+## Diagrama C4 Model
+
+![C4 Model](docs/C4.png)
 
 Fluxo principal (descrição passo a passo)
 -----------------------------------------
-- Autenticação
-  1. Usuário se cadastra ou realiza login no `auth-service`.
-  2. `auth-service` devolve um JWT com claims básicos (userId, role).
+- Autenticacao
+  1. Usuario se cadastra ou realiza login no `auth-service`.
+  2. `auth-service` devolve um JWT (token, tipo, userId, email, role).
 
-- Criação de pedido
+- Criacao de pedido
   1. Cliente envia POST /orders ao `pedido-service` com JWT no header.
-  2. `pedido-service` valida JWT (via chave local/jwks) e autoriza a ação.
-  3. Pedido é persistido localmente com status inicial (PENDING).
-  4. `pedido-service` publica evento `pedido.criado` no Kafka com payload contendo pedidoId, userId, itens e total.
+  2. `pedido-service` valida JWT localmente e autoriza a acao.
+  3. Pedido e persistido com status inicial AGUARDANDO_CONFIRMACAO.
 
-- Processamento de pagamento (assíncrono)
+- Confirmacao do pedido
+  1. Cliente envia POST /orders/{id}/confirm.
+  2. `pedido-service` valida se o pedido pertence ao usuario e se o status permite confirmacao.
+  3. Status muda para CRIADO.
+  4. `pedido-service` publica evento `pedido.criado` no Kafka com `orderId`, `customerId` , `totalAmount` ,`items`, `status` e `restaurantData`.
+
+- Processamento de pagamento (assincrono)
   1. `pagamento-service` consome `pedido.criado`.
-  2. Tenta chamar `procpag` (HTTP) para efetivar o pagamento.
-  3. Com base na resposta, publica evento `pagamento.aprovado` ou `pagamento.pendente`.
-  4. `pedido-service` consome o resultado e atualiza o status do pedido.
+  2. Cria pagamento com status PENDENTE e chama `procpag` (HTTP).
+  3. Em caso de sucesso, publica `pagamento.aprovado`.
+  4. Em caso de erro/excecao, publica `pagamento.pendente`.
+  5. `pedido-service` consome o evento e atualiza o status do pedido.
 
 Pontos de resiliência
 --------------------------------------------------
-Abaixo estão os pontos críticos de falha e as estratégias implementadas/recomendadas para resilência.
+Abaixo estão as estratégias implementadas para resilência.
 
-1) Comunicação com Kafka
-- Possíveis falhas: broker indisponível, latência, mensagens duplicadas ou ordem parcial.
-- Estratégias:
-  - Retries com backoff exponencial no produtor/consumer.
-  - Acknowledgements manuais e commit por lote controlado (consumer).
-  - Uso de tópicos de retry e DLQ (dead-letter) para mensagens que falham repetidamente.
-  - Idempotência na aplicação (usar orderId/pedidoId como key para evitar duplicações no processamento).
-  - Monitoramento de lag de consumer (alertas para offsets).
-
-2) Chamadas HTTP ao `procpag` (serviço externo)
-- Possíveis falhas: timeout, erro 5xx, latência, indisponibilidade.
-- Estratégias:
-  - Circuit Breaker (Resilience4j) para abrir circuito após 5 falhas e evitar sobrecarregar o serviço externo.
-  - Retries limitados com jitter e timeout curto por tentativa.
-  - Fallbacks: marcar pagamento como PENDING e publicar evento apropriado para reprocessamento manual/assincrono.
-  - Dead-letter para requisições que excederem tentativas e alertar operadores.
-
-3) Persistência local (Postgres) — consistência e disponibilidade
-- Possíveis falhas: conexão de banco, deadlocks, inconsistência entre serviços.
-- Estratégias:
-  - Transações locais ao criar pedido e ao publicar evento (outbox pattern recomendado).
-  - Pool de conexões configurado com timeouts e reconexão automática.
-  - Backups e readiness/liveness probes para evitar nós degradados.
-
-4) Autenticação/Autorização (JWT)
-- Possíveis falhas: token expirado, chave de assinatura rotacionada, validação lenta.
-- Estratégias:
-  - Validação eficiente.
-  - Tratamento claro de token expirado (403 com mensagem que instrui a renovação de token).
-  - Rate limiting e proteção contra brute-force no `auth-service`.
-
-5) Consumidores Kafka e ordenação/duplicidade
-- Possíveis falhas: processamento duplicado, out-of-order.
-- Estratégias:
-  - Processamento idempotente no consumidor (verificar se evento já aplicado pelo pedidoId).
-  - Uso de chave de particionamento consistente para garantir ordering relativo por pedidoId quando necessário.
-  - Pause/resume no consumidor em caso de back-pressure.
-
-6) Observabilidade e alertas
-- Métricas essenciais: latência das APIs, taxa de erros 4xx/5xx, tempo de resposta do `procpag`, lag dos consumidores Kafka, estado do circuit breaker.
-- Logs estruturados (correlationId por fluxo) e tracing distribuído.
+- Circuit Breaker (Resilience4j) com `sliding-window-size=4`, `minimum-number-of-calls=2`, `failure-rate-threshold=10`, `wait-duration-in-open-state=60s`.
+- Retry com `max-attempts=3` e `wait-duration=2s`.
+- Timeout por tentativa de 3 segundos.
+- Fallback
