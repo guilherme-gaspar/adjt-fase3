@@ -14,6 +14,9 @@
 - [Rotas HTTP principais](#rotas-http-principais)
 - [Tópicos Kafka](#tópicos-kafka)
 - [Exemplos de chamadas (cURL)](#exemplos-de-chamadas-curl)
+- [Arquitetura detalhada](#arquitetura-detalhada)
+- [Fluxo principal (descrição passo a passo)](#fluxo-principal-descrição-passo-a-passo)
+- [Pontos de resiliência](#pontos-de-resiliência)
 ---
 
 Visão Geral
