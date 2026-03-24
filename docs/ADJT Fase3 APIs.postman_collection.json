@@ -1,0 +1,304 @@
+{
+  "info": {
+    "_postman_id": "9a6fa400-edb5-49e1-90a1-f333007ae909",
+    "name": "ADJT Fase3 APIs",
+    "description": "Collection para testar auth-service e pedido-service do projeto adjt-fase3.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "49628769",
+    "_collection_link": "https://go.postman.co/collection/49628769-9a6fa400-edb5-49e1-90a1-f333007ae909?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth Service",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"teste user\",\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{auth_base_url}}/auth/register",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Cria um usuario novo no auth-service."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Token returned', function () {",
+                  "    pm.expect(jsonData.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('jwt_token', jsonData.token);",
+                  "pm.collectionVariables.set('customer_id', jsonData.userId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{auth_base_url}}/auth/login",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica e salva o JWT em jwt_token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pedido Service",
+      "item": [
+        {
+          "name": "Create Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Order id returned', function () {",
+                  "    pm.expect(jsonData.id).to.exist;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('order_id', jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurant\": {\n    \"restaurantId\": 101,\n    \"restaurantName\": \"Restaurante Teste\"\n  },\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"name\": \"Burger\",\n      \"quantity\": 2,\n      \"price\": 24.90\n    },\n    {\n      \"productId\": 2,\n      \"name\": \"Soda\",\n      \"quantity\": 1,\n      \"price\": 7.50\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{pedido_base_url}}/orders",
+              "host": [
+                "{{pedido_base_url}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Cria pedido para o usuario autenticado e salva id em order_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{pedido_base_url}}/orders/{{order_id}}/confirm",
+              "host": [
+                "{{pedido_base_url}}"
+              ],
+              "path": [
+                "orders",
+                "{{order_id}}",
+                "confirm"
+              ]
+            },
+            "description": "Confirma o pedido (fluxo de status no dominio)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{pedido_base_url}}/orders",
+              "host": [
+                "{{pedido_base_url}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Lista pedidos do usuario autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order By Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{pedido_base_url}}/orders/{{order_id}}",
+              "host": [
+                "{{pedido_base_url}}"
+              ],
+              "path": [
+                "orders",
+                "{{order_id}}"
+              ]
+            },
+            "description": "Busca pedido por id para o usuario autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Unauthorized - Get Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{pedido_base_url}}/orders",
+              "host": [
+                "{{pedido_base_url}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Teste negativo sem Authorization (espera 401/403 conforme config)."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          "if (!pm.collectionVariables.get('auth_base_url')) {",
+          "    pm.collectionVariables.set('auth_base_url', 'http://localhost:8081');",
+          "}",
+          "if (!pm.collectionVariables.get('pedido_base_url')) {",
+          "    pm.collectionVariables.set('pedido_base_url', 'http://localhost:8082');",
+          "}",
+          "if (!pm.collectionVariables.get('user_email')) {",
+          "    pm.collectionVariables.set('user_email', 'teste@example.com');",
+          "}",
+          "if (!pm.collectionVariables.get('user_password')) {",
+          "    pm.collectionVariables.set('user_password', '123456');",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "auth_base_url",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "pedido_base_url",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "user_email",
+      "value": "postman.user@example.com"
+    },
+    {
+      "key": "user_password",
+      "value": "123456"
+    },
+    {
+      "key": "jwt_token",
+      "value": ""
+    },
+    {
+      "key": "customer_id",
+      "value": ""
+    },
+    {
+      "key": "order_id",
+      "value": ""
+    }
+  ]
+}
